@@ -1,4 +1,4 @@
-package mosquittoscope
+package main
 
 import (
 	"fmt"
