@@ -1,4 +1,4 @@
-module mqttmonitor
+module github.com/tjhowse/mqttmonitor
 
 go 1.18
 
