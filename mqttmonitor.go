@@ -16,9 +16,8 @@ var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 // MQTTMonitor monitors mqtt... ?
 type MQTTMonitor struct {
-	c            mqtt.Client
-	s            *Settings
-	topicChannel chan mqtt.Message
+	c mqtt.Client
+	s *Settings
 }
 
 type Settings struct {
@@ -45,6 +44,7 @@ func NewMQTTMonitor(s *Settings) *MQTTMonitor {
 	opts.SetUsername(m.s.MQTT.Username)
 	opts.SetPassword(m.s.MQTT.Password)
 	opts.SetConnectionLostHandler(m.connectionLostHandler)
+	opts.SetAutoReconnect(true)
 	m.c = mqtt.NewClient(opts)
 	if token := m.c.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
@@ -54,9 +54,7 @@ func NewMQTTMonitor(s *Settings) *MQTTMonitor {
 }
 
 func (m *MQTTMonitor) connectionLostHandler(_ mqtt.Client, _ error) {
-	// Assume this application will be dockerised. if we lose contact with the broker
-	// just abandon ship. docker-compose will restart the container.
-	log.Fatal("Lost contact with the MQTT broker.")
+	log.Print("Lost contact with the MQTT broker, reconnecting")
 }
 
 // SubscribeAndGetChannel will subscribe to the given topic and return a channel through which
@@ -67,7 +65,7 @@ func (m *MQTTMonitor) SubscribeAndGetChannel(topic string) (chan mqtt.Message, e
 		channel <- msg
 	}
 	if token := m.c.Subscribe(topic, 0, callback); token.Wait() && token.Error() != nil {
-		return nil, fmt.Errorf("Failed to subscribe to %q", topic)
+		return nil, fmt.Errorf("failed to subscribe to %q", topic)
 	}
 	return channel, nil
 }
@@ -75,7 +73,7 @@ func (m *MQTTMonitor) SubscribeAndGetChannel(topic string) (chan mqtt.Message, e
 // Publish can be used to publish a message to a topic
 func (m *MQTTMonitor) Publish(topic, message string) error {
 	if token := m.c.Publish(topic, 1, false, message); token.Wait() && token.Error() != nil {
-		return fmt.Errorf("Failed to publish to %q", topic)
+		return fmt.Errorf("failed to publish to %q", topic)
 	}
 	return nil
 }
