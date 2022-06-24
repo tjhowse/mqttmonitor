@@ -35,7 +35,6 @@ type Settings struct {
 func NewMQTTMonitor(s *Settings) *MQTTMonitor {
 	m := MQTTMonitor{}
 	m.s = s
-	// mqtt.DEBUG = log.New(os.Stdout, "", 0)
 	mqtt.ERROR = log.New(os.Stderr, "[ERROR]", 0)
 	fullPath := fmt.Sprintf("tcp://%s:%d", m.s.MQTT.Hostname, m.s.MQTT.Port)
 	opts := mqtt.NewClientOptions().AddBroker(fullPath).SetClientID(m.s.MQTT.ClientID)
@@ -60,7 +59,7 @@ func (m *MQTTMonitor) RegisterLogWriter(w io.Writer) {
 	mqtt.ERROR = log.New(w, "[ERROR]", 0)
 	mqtt.CRITICAL = log.New(w, "[CRITICAL]", 0)
 	mqtt.WARN = log.New(w, "[WARN]", 0)
-	mqtt.DEBUG = log.New(w, "[DEBUG]", 0)
+	// mqtt.DEBUG = log.New(w, "[DEBUG]", 0)
 }
 
 func (m *MQTTMonitor) connectionLostHandler(_ mqtt.Client, _ error) {
