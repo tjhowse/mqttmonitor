@@ -64,7 +64,7 @@ func (m *MQTTMonitor) RegisterLogWriter(w io.Writer) {
 }
 
 func (m *MQTTMonitor) connectionLostHandler(_ mqtt.Client, _ error) {
-	log.Print("Lost contact with the MQTT broker, reconnecting")
+	mqtt.WARN.Printf("Lost contact with the MQTT broker, reconnecting")
 }
 
 // SubscribeAndGetChannel will subscribe to the given topic and return a channel through which
