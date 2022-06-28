@@ -35,6 +35,7 @@ type Settings struct {
 // NewMQTTMonitor returns a pointer to an instance of MQTTMonitor
 func NewMQTTMonitor(s *Settings) *MQTTMonitor {
 	m := MQTTMonitor{}
+	m.channels = map[string](chan mqtt.Message){}
 	m.s = s
 	mqtt.ERROR = log.New(os.Stderr, "[ERROR]", 0)
 	fullPath := fmt.Sprintf("tcp://%s:%d", m.s.MQTT.Hostname, m.s.MQTT.Port)
