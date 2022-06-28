@@ -17,8 +17,9 @@ var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 
 // MQTTMonitor monitors mqtt... ?
 type MQTTMonitor struct {
-	c mqtt.Client
-	s *Settings
+	c        mqtt.Client
+	s        *Settings
+	channels map[string](chan mqtt.Message)
 }
 
 type Settings struct {
@@ -44,6 +45,7 @@ func NewMQTTMonitor(s *Settings) *MQTTMonitor {
 	opts.SetUsername(m.s.MQTT.Username)
 	opts.SetPassword(m.s.MQTT.Password)
 	opts.SetConnectionLostHandler(m.connectionLostHandler)
+	opts.SetOnConnectHandler(m.onConnectHandler)
 	opts.SetAutoReconnect(true)
 	m.c = mqtt.NewClient(opts)
 	if token := m.c.Connect(); token.Wait() && token.Error() != nil {
@@ -59,24 +61,42 @@ func (m *MQTTMonitor) RegisterLogWriter(w io.Writer) {
 	mqtt.ERROR = log.New(w, "[ERROR]", 0)
 	mqtt.CRITICAL = log.New(w, "[CRITICAL]", 0)
 	mqtt.WARN = log.New(w, "[WARN]", 0)
-	// mqtt.DEBUG = log.New(w, "[DEBUG]", 0)
 }
 
 func (m *MQTTMonitor) connectionLostHandler(_ mqtt.Client, _ error) {
 	mqtt.WARN.Printf("Lost contact with the MQTT broker, reconnecting")
 }
 
-// SubscribeAndGetChannel will subscribe to the given topic and return a channel through which
-// publications to that topic will be fed.
+// onConnectHandler subscribes to all of the topics in the channels map
+// and starts feeding the results into the corresponding channels.
+func (m *MQTTMonitor) onConnectHandler(_ mqtt.Client) {
+	mqtt.DEBUG.Printf("Connected to broker")
+	for topic := range m.channels {
+		m.subscribeAndFeedChannel(topic)
+	}
+}
+
+// SubscribeAndGetChannel returns a channel that will provide mqtt.Messages published
+// to that topic.
 func (m *MQTTMonitor) SubscribeAndGetChannel(topic string) (chan mqtt.Message, error) {
-	channel := make(chan mqtt.Message)
+	m.channels[topic] = make(chan mqtt.Message)
+	err := m.subscribeAndFeedChannel(topic)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.channels[topic], nil
+}
+
+func (m *MQTTMonitor) subscribeAndFeedChannel(topic string) error {
 	callback := func(client mqtt.Client, msg mqtt.Message) {
-		channel <- msg
+		m.channels[topic] <- msg
 	}
 	if token := m.c.Subscribe(topic, 0, callback); token.Wait() && token.Error() != nil {
-		return nil, fmt.Errorf("failed to subscribe to %q", topic)
+		return token.Error()
+		// mqtt.ERROR.Printf("failed to subscribe to %q", topic)
 	}
-	return channel, nil
+	return nil
 }
 
 // Publish can be used to publish a message to a topic
